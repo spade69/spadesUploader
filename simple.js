@@ -55,7 +55,7 @@
     });
 
     // 文件上传过程中创建进度条实时显示。
-    uploaderx.on( 'uploadProgress', function( file, percentage ) {
+    uploaderx.on( 'uploadProgress', function( file, percentage  ) {
         var $li = $( '#'+file.id ),
             $percent = $li.find('.progress .progress-bar');
 
@@ -68,8 +68,12 @@
         }
 
         $li.find('p.state').text('上传中');
-
-        $percent.css( 'width', percentage * 100 + '%' );
+        if ( state === 'uploading' ) {
+            $btn.text('暂停上传');
+            $percent.css( 'width', percentage * 100 + '%' );
+        } else {
+            $btn.text('上传编码');
+        }
     });
 
     uploaderx.on( 'uploadSuccess', function( file ) {
@@ -86,21 +90,6 @@
         $( '#'+file.id ).find('.progress').fadeOut();
     });
 
-    uploaderx.on( 'all', function( type ) {
-        if ( type === 'startUpload' ) {
-            state = 'uploading';
-        } else if ( type === 'stopUpload' ) {
-            state = 'paused';
-        } else if ( type === 'uploadFinished' ) {
-            state = 'done';
-        }
-
-        if ( state === 'uploading' ) {
-            $btn.text('暂停上传');
-        } else {
-            $btn.text('上传编码');
-        }
-    });
 
     $btn.on( 'click', function() {
         if ( state === 'uploading' ) {
