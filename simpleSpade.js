@@ -47,6 +47,7 @@
         listId='list',
         classUploadList='uploader-list',
         picker='pick',
+        btnId='ctlBtn',
         classBtn='btn',
         extendsion='gif,jpg,jpeg,bmp,png',
         imgTitle='Images',
@@ -87,7 +88,17 @@
         if(classes&&classes[classes.length-1]!=" ")
             c=" "+c; //如果需要加一个空格
         this.e.className+=c; //将c添加到className中
-    }
+    };
+
+    //将在e.className 中出现的所有c都删除
+    CSSClassList.prototype.remove=function(c){
+        //检查c是否是合法的类名
+        if(c.length===0||c.indexOf(" ")!=-1)
+            throw new Error("Invalid class name: "+c);
+        //将所有作为单词的c和多余尾随空格删除
+        var pattern=new RegExp("\\b"+c+"\\b\\s*","g'");
+        this.e.className=this.e.className.replace(pattern,"");
+    };
         
 
     //判断传入是否为对象
@@ -123,20 +134,34 @@
 
     }
 
+    // 跨浏览器兼容的工具函数
+    function addEvent(element,type,handler) {
+        if(element.addEventListener) {
+            element.addEventListener(type, handler,false);
+        }
+        else if(element.attachEvent) {
+            element.attachEvent("on" + type, handler);
+        }
+        else {
+            element["on" + type] = handler;
+        }
+    }
+
     function render(options){
         var classObj={};
         var type=options.type;
         var id=options.divId;
         var item=document.getElementById(id);
         var hintx=(options.type==='img')?msgHint['img']:msgHint['file'];
+        var buttonText=(options.type==='img')?btnTxt['img']:btnTxt['file'];
         //generating random ID of picker and uploader
         picker+=randomString();
         uploadId+=randomString();
         
         var uploadDom='<div id='+uploadId+'class='+classRoot+'>'+
             '<div class='+classUploadList+'id='+listId+'></div>'+'<div id='+picker+'>'+hintx+'</div>'
-        +'</div>';
-
+        '<div id='+btnId+'class="btn-default "'+classBtn+'>'+buttonText+'</div>'+'</div>';
+        
         item.innerHTML+=uploadDom;
     }
 
@@ -250,9 +275,14 @@
             var stateNode=filenode.querySelectorAll('p.state');
             if(options.type==='file'){
                  //$( '#'+file.id ).find('p.state').text('已上传');
-                stateNode.textContent='已上传';
-            }else{
+                 for(var i=0;i<stateNode.length;i++)
+                    //stateNode[i].textContent='已上传';
+                    textContent(stateNode[i],'已上传');
+            }else if(options.type==='img'){
                 var classlist=new classList(filenode);
+                classlist.add('upload-state-done');
+            }else{
+                console.log('option.type error');
             }
         });
         
@@ -261,32 +291,51 @@
             console.log('uploadError');
             var filenode=document.getElementById(file.id);
             var stateNode=filenode.querySelectorAll('p.state');
-            var error=filenode.querySelectorAll('div.error');
+            var errorNode=filenode.querySelector('div.error');//just need one
             if(options.type==='file'){
                 //$( '#'+file.id ).find('p.state').text('上传出错');
-                stateNode.textContent='上传出错';
+                for(var i=0;i<stateNode.length;i++){
+                    textContent(stateNode,'上传出错');
+                }
             }else if(options.type==='img'){
-                
+                if(errorNode){//if not found return null
+                    errorNode.innerHTML+='<div class="error"></div>';
+                    filenode.appendChild(errNode);
+                }
+                textContent(errorNode,'上传失败!');
+            }else{
+                console.log('option.type error');
             }
         });
 
         rootx.uploader.on( 'uploadComplete', function( file ) {
-            $( '#'+file.id ).find('.progress').fadeOut();
-        });
-
-
-        $btn.on( 'click', function() {
-            if ( state === 'uploading' ) {
-                rootx.uploader.stop();
-            } else {
-                rootx.uploader.upload();
+            var filenode=document.getElementById(file.id);
+            var progress=filenode.querySelector('.progress')
+            if(options.type==='file'){
+                //$( '#'+file.id ).find('.progress').fadeOut();
+               progress.parentNode.removeChild(progress);
+            }else if(options.type==='img'){
+                //$( '#'+file.id ).find('.progress').remove();
+                progress.parentNode.removeChild(progress);
+            }else{
+                console.log('option.type error');
             }
         });
         
-        $sub.on('click', function() {
-                rootx.uploader.upload();
-        });
-
+//var eventHandler=
+        (function(){
+            addEvent(document.getElementById(btnId),'click',function(){
+                if ( state === 'uploading' ) {
+                    rootx.uploader.stop();
+                } else {
+                    rootx.uploader.upload();
+                }
+            });
+            
+            addEvent(document.getElementById(btnId),'click',function(){
+                    rootx.uploader.upload();
+            });
+        })();
     }
 
     return createUpload;

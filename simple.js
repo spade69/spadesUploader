@@ -116,9 +116,7 @@
         $( '#'+file.id ).find('p.state').text('上传出错');
     });
 
-    uploaderx.on( 'uploadComplete', function( file ) {
-        $( '#'+file.id ).find('.progress').fadeOut();
-    });
+ 
 
        // 文件上传失败，现实上传出错。
     uploader.on( 'uploadError', function( file ) {
@@ -132,7 +130,10 @@
 
         $error.text('上传失败！');
     });
-
+    
+   uploaderx.on( 'uploadComplete', function( file ) {
+        $( '#'+file.id ).find('.progress').fadeOut();
+    });
     // 完成上传完了，成功或者失败，先删除进度条。
     uploader.on( 'uploadComplete', function( file ) {
         $( '#'+file.id ).find('.progress').remove();
