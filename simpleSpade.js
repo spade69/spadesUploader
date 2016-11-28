@@ -2,7 +2,7 @@
 *Feature:
 * 简化配置多个上传实例
 * 封装配置操作
-* 提供HTML模板渲染上传组件
+* 提供上传组件的基本UI
 * 提供暴露的class 供配置样式
 * 暂时提供两种组件样式供选择
 * 
@@ -50,8 +50,46 @@
         classBtn='btn',
         extendsion='gif,jpg,jpeg,bmp,png',
         imgTitle='Images',
-        msgHint={img:'选择图片',file:'选择文件',text:''};
+        msgHint={img:'选择图片',file:'选择文件',text:''},
+        btnTxt={img:'',file:'上传编码',text:''};
+      
+    //Polyfill for classlist
+    function classList(e){
+        if(e.classList) return e.classList;  //如果e.classList存在返回
+        else return new CSSClassList(e);//不存在就伪造一个
+    }
+
+    //CSSClassList是一个模拟DOMTokenList的 JS类
+    function CSSClassList(e){
+        this.e=e;
+    }
+
+    //如果e.className包含类名c则返回true 否则返回false
+    CSSClassList.prototype.contains=function(c){
+        //检测c是否是合法的类名
+        if(c.length===0||c.indexOf(" ")!=-1){
+            throw new Error('Invalid class name: '+c);
+        }
+        //常规检查
+        var classes=this.e.className;
+        if(!classes) return false;//e不包含类名
+        if(classes===c) return true;//完全匹配的类名
+        //否则把c自身看作一个单词，利用正则表达式搜索c
+        // \b 在正则表达式里代表单词的边界
+        // String.prototype.search
+        return classes.search("\\b"+c+"\\b")|= -1;
+    };
+
+    //如果c不存在，把c添加到e.className
+    CSSClassList.prototype.add=function(c){
+        if(this.contains(c)) return; //如果存在，什么都不做
+        var classes=this.e.className;
+        if(classes&&classes[classes.length-1]!=" ")
+            c=" "+c; //如果需要加一个空格
+        this.e.className+=c; //将c添加到className中
+    }
         
+
     //判断传入是否为对象
     function isObject(value){
         var type=typeof obj;
@@ -71,12 +109,27 @@
         return pwd;
     }
 
+    //文本节点，兼容性的处理. IE innerText   FF没有innerText
+    function textContent(element,value){
+        var content=element.textContent; //检测textContent是否有定义
+        if(value==undefined){ //没有传递value 返回当前文本
+            if(content!==undefined) return content;
+            else return element.innerText;
+        }
+        else{
+            if(content!==undefined) element.textContent=value;
+            else element.innerText=value;
+        }
+
+    }
+
     function render(options){
         var classObj={};
         var type=options.type;
         var id=options.divId;
         var item=document.getElementById(id);
         var hintx=(options.type==='img')?msgHint['img']:msgHint['file'];
+        //generating random ID of picker and uploader
         picker+=randomString();
         uploadId+=randomString();
         
@@ -133,15 +186,42 @@
         var list=document.getElementById(listId);
         // 当有文件添加进来的时候
         rootx.uploader.on('fileQueued',function(file){
-            list.innerHTML+= '<div id="' + file.id + '" class="item">' +
-                '<h4 class="info">' + file.name + '</h4>' +
-                '<p class="state">等待上传...</p>' +'</div>' ;
+            if(options.type==='file'){
+                list.innerHTML+= '<div id="' + file.id + '" class="item">' +
+                    '<h4 class="info">' + file.name + '</h4>' +
+                    '<p class="state">等待上传...</p>' +'</div>' ;
+            }else if(options.type==='img'){
+                var li='<div id="' + file.id + '" class="file-item thumbnail">' +
+                        '<img>' +'<div class="info">' + file.name + '</div>' +
+                        '</div>',
+                //document.querySelector
+                img=document.querySelector('li img');
+                list.innerHTML+=li;
+                //创建缩略图
+                rootx.uploader.makeThumb( file, function( error, src ) {
+                    if ( error ) {
+                        //$img.replaceWith('<span>不能预览</span>');
+                        var parentNode=img.parentNode;//获得img的父节点
+                        var newNode=document.createElement('span');
+                        newNode.appendChild(document.createTextNode('不能预览'));
+                        parentNode.replaceChild(newNode,img)//replaceChild(newChild,oldChild)
+                        return;
+                    }
+                    img.setAttribute( 'src', src );//jquery设置属性的值
+                }, thumbnailWidth, thumbnailHeight );
+            }else{
+                alert('Please input correct args, file or img!');
+                return;
+            }
+
         });
 
     // 文件上传过程中创建进度条实时显示。
         rootx.uploader.on('uploadProgress',function(file,percentage){
              var $li = $( '#'+file.id ),
              $percent = $li.find('.progress .progress-bar');
+             //上传按钮的提示信息
+             var btnInfo=(option.type==='file')?btnTxt['file']:btnTxt['img'];
 
             // 避免重复创建
             if ( !$percent.length ) {
@@ -151,18 +231,43 @@
             }
 
             $li.find('p.state').text('上传中');
-
-            $percent.css( 'width', percentage * 100 + '%' );
+            if(options.type==='file'){
+                if ( state === 'uploading' ) {
+                    $btn.text('暂停上传');
+                    $percent.css( 'width', percentage * 100 + '%' );
+                } else {
+                    //depends on type
+                    $btn.text(btnInfo);
+                }
+            }else{
+                 $percent.css( 'width', percentage * 100 + '%' );
+            }
         });
 
         //uploadSuccess
         rootx.uploader.on('uploadSuccess',function(file){
-            $( '#'+file.id ).find('p.state').text('已上传');
+            var filenode=document.getElementById(file.id);
+            var stateNode=filenode.querySelectorAll('p.state');
+            if(options.type==='file'){
+                 //$( '#'+file.id ).find('p.state').text('已上传');
+                stateNode.textContent='已上传';
+            }else{
+                var classlist=new classList(filenode);
+            }
         });
         
+        //Error handler
         rootx.uploader.on( 'uploadError', function( file ) {
             console.log('uploadError');
-            $( '#'+file.id ).find('p.state').text('上传出错');
+            var filenode=document.getElementById(file.id);
+            var stateNode=filenode.querySelectorAll('p.state');
+            var error=filenode.querySelectorAll('div.error');
+            if(options.type==='file'){
+                //$( '#'+file.id ).find('p.state').text('上传出错');
+                stateNode.textContent='上传出错';
+            }else if(options.type==='img'){
+                
+            }
         });
 
         rootx.uploader.on( 'uploadComplete', function( file ) {
@@ -183,9 +288,6 @@
         });
 
     }
-
-    
-
 
     return createUpload;
 })(jQuery,WebUploader);
