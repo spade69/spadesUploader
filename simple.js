@@ -130,7 +130,7 @@
 
         $error.text('上传失败！');
     });
-    
+
    uploaderx.on( 'uploadComplete', function( file ) {
         $( '#'+file.id ).find('.progress').fadeOut();
     });
@@ -210,3 +210,23 @@ jQuery(function() {
  
     
 });
+
+//注册成jQuery扩展的方式
+ $.fn.powerWebUpload = function (options) {
+        var ele = this;
+        if (typeof WebUploader == 'undefined') {
+            var casspath = applicationPath + "/Scripts/webuploader/webuploader.css";
+            $("<link>").attr({ rel: "stylesheet", type: "text/css", href: casspath }).appendTo("head");
+            var jspath = applicationPath + "/Scripts/webuploader/webuploader.min.js";
+            $.getScript(jspath) .done(function() {
+                initWebUpload(ele, options);
+            })
+            .fail(function() {
+                alert("请检查webuploader的路径是否正确!")
+            });
+           
+        }
+        else {
+            initWebUpload(ele, options);
+        }
+    }

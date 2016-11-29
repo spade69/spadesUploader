@@ -3,6 +3,7 @@
 * 简化配置多个上传实例
 * 封装配置操作
 * 提供上传组件的基本UI
+* 可以作为jQuery插件使用,导入jQuery即可，但不依赖jQuery
 * 提供暴露的class 供配置样式
 * 暂时提供两种组件样式供选择
 * 
@@ -17,7 +18,7 @@
 *     type: img,//img or file 上传图片 or  上传普通文件
 *     divId:id,  // 你要在页面哪个div下创建这个上传组件
 *     fileSizeLimit:,// int  所有文件的总上传大小不超过这个值
-*     pickText:'选择XX' ,//选择文件 or 选择图片 选择编码显示的
+*    
 *     uploadText:'',
 *     thumbnailSize:100, //100 or 200    
 *    }
@@ -34,12 +35,11 @@
 (function(jQuery,WebUploader){
     //param  setting  Global variable
     var $=jQuery;
-    var rootx=this;
+    ///var rootx=this;  这个this是 window！
     //优化retina，在retina下这个值是2
-    var ratio=window.devicePixelRatio||1,
+    var ratio=window.devicePixelRatio||1;
         //缩略图大小
-        thumbnailWidth=options.thumbnailSize*ratio,
-        thumbnailHeight=options.thumbnailSize*ratio;
+        
     var resize=false,
         swf='upload/Uploader.swf',
         uploadId='upload',
@@ -52,9 +52,9 @@
         extendsion='gif,jpg,jpeg,bmp,png',
         imgTitle='Images',
         msgHint={img:'选择图片',file:'选择文件',text:''},
-        btnTxt={img:'',file:'上传编码',text:''};
+        btnTxt={img:'',file:'确认上传',text:''};
       
-    //Polyfill for classlist
+    //Polyfill for classlist, which is a HTML5 new prop
     function classList(e){
         if(e.classList) return e.classList;  //如果e.classList存在返回
         else return new CSSClassList(e);//不存在就伪造一个
@@ -102,10 +102,11 @@
         
 
     //判断传入是否为对象
-    function isObject(value){
+    function isObject(obj){
         var type=typeof obj;
         return type==='function'||type==='object'&&!!obj;
     }
+
     //generate random string
    function randomString(len){
         len=len||32;
@@ -155,20 +156,24 @@
         var hintx=(options.type==='img')?msgHint['img']:msgHint['file'];
         var buttonText=(options.type==='img')?btnTxt['img']:btnTxt['file'];
         //generating random ID of picker and uploader
-        picker+=randomString();
-        uploadId+=randomString();
+        picker+=randomString(5);
+        uploadId+=randomString(5);
+        //class  或者 id名的 长度限制？
+        var uploadDom='<div id='+uploadId+' class='+classRoot+'>'+
+            '<div class='+classUploadList+' id='+listId+'></div>'+'<div id='+picker+'>'+hintx+'</div>'+
+        '<div id='+btnId+' class="btn-danger '+classBtn+'">'+buttonText+'</div>'+'</div>';
         
-        var uploadDom='<div id='+uploadId+'class='+classRoot+'>'+
-            '<div class='+classUploadList+'id='+listId+'></div>'+'<div id='+picker+'>'+hintx+'</div>'
-        '<div id='+btnId+'class="btn-default "'+classBtn+'>'+buttonText+'</div>'+'</div>';
-        
+        if(options.type==='file'){
+
+        }
+
         item.innerHTML+=uploadDom;
     }
 
     //初始化，创建上传实例 
     function initUploader(options){
-        if(!rootx.isObject(options)){
-                console.log("error");
+        if(!isObject(options)){
+                console.log("error! it is not an object!");
                 return ;
         }
         else if(!WebUploader.Uploader.support()){
@@ -177,6 +182,8 @@
             return ;
         }
         else{
+            //render the html first!
+            render(options); //render the html dom
             //common setting
             var settings={
                     method:'POST',
@@ -187,8 +194,8 @@
                     // 选择文件的按钮。可选。
                     // 内部根据当前运行是创建，可能是input元素，也可能是flash.
                     fileSizeLimit:options.fileSizeLimit, 
-                    pick: picker // picker id 
-                };
+                    pick: '#'+picker // picker id 
+            };
             if(options.type==='img'){
                 settings['auto'] = true;
                 settings['accept']={
@@ -199,7 +206,6 @@
             }else if(options.type==='file'){
                 settings['resize']=false;
             }
-            render(options); //render the html dom
             var uploader=WebUploader.create(settings);
         }
         return uploader;
@@ -207,10 +213,10 @@
 
 // fileQueued   uploadProgress  uploadSuccess uploadError uploadComplete all
     function createUpload(options){
-        rootx.uploader=initUploader(options);
+        var uploader=initUploader(options);
         var list=document.getElementById(listId);
         // 当有文件添加进来的时候
-        rootx.uploader.on('fileQueued',function(file){
+        uploader.on('fileQueued',function(file){
             if(options.type==='file'){
                 list.innerHTML+= '<div id="' + file.id + '" class="item">' +
                     '<h4 class="info">' + file.name + '</h4>' +
@@ -223,7 +229,7 @@
                 img=document.querySelector('li img');
                 list.innerHTML+=li;
                 //创建缩略图
-                rootx.uploader.makeThumb( file, function( error, src ) {
+                uploader.makeThumb( file, function( error, src ) {
                     if ( error ) {
                         //$img.replaceWith('<span>不能预览</span>');
                         var parentNode=img.parentNode;//获得img的父节点
@@ -233,7 +239,9 @@
                         return;
                     }
                     img.setAttribute( 'src', src );//jquery设置属性的值
-                }, thumbnailWidth, thumbnailHeight );
+                    //thumbnailWidth=options.thumbnailSize*ratio,
+                    //thumbnailHeight=options.thumbnailSize*ratio;
+                }, options.thumbnailSize*ratio, options.thumbnailSize*ratio );
             }else{
                 alert('Please input correct args, file or img!');
                 return;
@@ -242,7 +250,7 @@
         });
 
     // 文件上传过程中创建进度条实时显示。
-        rootx.uploader.on('uploadProgress',function(file,percentage){
+        uploader.on('uploadProgress',function(file,percentage){
              var $li = $( '#'+file.id ),
              $percent = $li.find('.progress .progress-bar');
              //上传按钮的提示信息
@@ -270,7 +278,7 @@
         });
 
         //uploadSuccess
-        rootx.uploader.on('uploadSuccess',function(file){
+        uploader.on('uploadSuccess',function(file){
             var filenode=document.getElementById(file.id);
             var stateNode=filenode.querySelectorAll('p.state');
             if(options.type==='file'){
@@ -287,7 +295,7 @@
         });
         
         //Error handler
-        rootx.uploader.on( 'uploadError', function( file ) {
+        uploader.on( 'uploadError', function( file ) {
             console.log('uploadError');
             var filenode=document.getElementById(file.id);
             var stateNode=filenode.querySelectorAll('p.state');
@@ -308,7 +316,7 @@
             }
         });
 
-        rootx.uploader.on( 'uploadComplete', function( file ) {
+        uploader.on( 'uploadComplete', function( file ) {
             var filenode=document.getElementById(file.id);
             var progress=filenode.querySelector('.progress')
             if(options.type==='file'){
@@ -321,24 +329,26 @@
                 console.log('option.type error');
             }
         });
-        
+
 //var eventHandler=
         (function(){
-            addEvent(document.getElementById(btnId),'click',function(){
+            var uploadBtn=document.getElementById(btnId);
+            addEvent(uploadBtn,'click',function(){
                 if ( state === 'uploading' ) {
-                    rootx.uploader.stop();
+                    uploader.stop();
                 } else {
-                    rootx.uploader.upload();
+                    uploader.upload();
                 }
             });
-            
-            addEvent(document.getElementById(btnId),'click',function(){
-                    rootx.uploader.upload();
-            });
+            /*
+            addEvent(,'click',function(){
+                    uploader.upload();
+            });*/
         })();
     }
 
-    return createUpload;
+    $.fn.createUpload=createUpload;
+    
 })(jQuery,WebUploader);
 
 
