@@ -159,7 +159,7 @@
         picker+=randomString(5);
         uploadId+=randomString(5);
         //class  或者 id名的 长度限制？
-        var uploadDom='<div id='+uploadId+' class='+classRoot+'>'+
+        var uploadDom='<div id='+uploadId+' class='+classRoot+'>'+'<h3>'+options.uploadText+'</h3>'+
             '<div class='+classUploadList+' id='+listId+'></div>'+'<div id='+picker+'>'+hintx+'</div>';
         
         if(options.type==='file'){
