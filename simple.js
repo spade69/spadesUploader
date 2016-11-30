@@ -211,6 +211,7 @@ jQuery(function() {
     
 });
 
+//第三方的做法！
 //注册成jQuery扩展的方式
  $.fn.powerWebUpload = function (options) {
         var ele = this;

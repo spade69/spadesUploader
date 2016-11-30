@@ -160,13 +160,12 @@
         uploadId+=randomString(5);
         //class  或者 id名的 长度限制？
         var uploadDom='<div id='+uploadId+' class='+classRoot+'>'+
-            '<div class='+classUploadList+' id='+listId+'></div>'+'<div id='+picker+'>'+hintx+'</div>'+
-        '<div id='+btnId+' class="btn-danger '+classBtn+'">'+buttonText+'</div>'+'</div>';
+            '<div class='+classUploadList+' id='+listId+'></div>'+'<div id='+picker+'>'+hintx+'</div>';
         
         if(options.type==='file'){
-
+            uploadDom+= '<div id='+btnId+' class="btn-danger '+classBtn+'">'+buttonText+'</div>';
         }
-
+        uploadDom+='</div>';
         item.innerHTML+=uploadDom;
     }
 
@@ -194,7 +193,10 @@
                     // 选择文件的按钮。可选。
                     // 内部根据当前运行是创建，可能是input元素，也可能是flash.
                     fileSizeLimit:options.fileSizeLimit, 
-                    pick: '#'+picker // picker id 
+                    pick: '#'+picker, // picker id 
+                    chunked:true,
+                    chunkRetry:3,
+                    chunkSize:102400
             };
             if(options.type==='img'){
                 settings['auto'] = true;
@@ -215,7 +217,9 @@
     function createUpload(options){
         var uploader=initUploader(options);
         var list=document.getElementById(listId);
-        // 当有文件添加进来的时候
+        var state='pending';//
+
+        // 当有文件添加进来的时候,一次处理一张图片，每张图片加进来都会触发一次这个事件
         uploader.on('fileQueued',function(file){
             if(options.type==='file'){
                 list.innerHTML+= '<div id="' + file.id + '" class="item">' +
@@ -224,21 +228,21 @@
             }else if(options.type==='img'){
                 var li='<div id="' + file.id + '" class="file-item thumbnail">' +
                         '<img>' +'<div class="info">' + file.name + '</div>' +
-                        '</div>',
-                //document.querySelector
-                img=document.querySelector('li img');
+                        '</div>';      
                 list.innerHTML+=li;
                 //创建缩略图
+                //document.querySelector
+                var img=document.querySelector('#'+file.id+' img');
                 uploader.makeThumb( file, function( error, src ) {
                     if ( error ) {
                         //$img.replaceWith('<span>不能预览</span>');
                         var parentNode=img.parentNode;//获得img的父节点
                         var newNode=document.createElement('span');
                         newNode.appendChild(document.createTextNode('不能预览'));
-                        parentNode.replaceChild(newNode,img)//replaceChild(newChild,oldChild)
+                        parentNode.replaceChild(newNode,img);//replaceChild(newChild,oldChild)
                         return;
                     }
-                    img.setAttribute( 'src', src );//jquery设置属性的值
+                    img.setAttribute( 'src', src );//js设置属性的值
                     //thumbnailWidth=options.thumbnailSize*ratio,
                     //thumbnailHeight=options.thumbnailSize*ratio;
                 }, options.thumbnailSize*ratio, options.thumbnailSize*ratio );
@@ -252,9 +256,11 @@
     // 文件上传过程中创建进度条实时显示。
         uploader.on('uploadProgress',function(file,percentage){
              var $li = $( '#'+file.id ),
+             //var uploadBtn=document.getElementById(btnId);
+             $btn=$('#'+btnId);
              $percent = $li.find('.progress .progress-bar');
              //上传按钮的提示信息
-             var btnInfo=(option.type==='file')?btnTxt['file']:btnTxt['img'];
+             var btnInfo=(options.type==='file')?btnTxt['file']:btnTxt['img'];
 
             // 避免重复创建
             if ( !$percent.length ) {
@@ -303,12 +309,15 @@
             if(options.type==='file'){
                 //$( '#'+file.id ).find('p.state').text('上传出错');
                 for(var i=0;i<stateNode.length;i++){
-                    textContent(stateNode,'上传出错');
+                    textContent(stateNode[i],'上传出错');
                 }
             }else if(options.type==='img'){
-                if(errorNode){//if not found return null
-                    errorNode.innerHTML+='<div class="error"></div>';
-                    filenode.appendChild(errNode);
+                //console.log(errNode);
+                if(errorNode===null){//if not found return null
+                    errorNode=document.createElement('div');//innerHTML+='<div class="error"></div>';
+                    errorNode.setAttribute('class','error'); //errNode.className="error"
+                    filenode.appendChild(errorNode);
+                    errorNode=filenode.querySelector('div.error');//just need one
                 }
                 textContent(errorNode,'上传失败!');
             }else{
@@ -318,7 +327,8 @@
 
         uploader.on( 'uploadComplete', function( file ) {
             var filenode=document.getElementById(file.id);
-            var progress=filenode.querySelector('.progress')
+            var progress=filenode.querySelector('.progress');
+            var uploadBtn=document.getElementById(btnId);
             if(options.type==='file'){
                 //$( '#'+file.id ).find('.progress').fadeOut();
                progress.parentNode.removeChild(progress);
@@ -328,18 +338,37 @@
             }else{
                 console.log('option.type error');
             }
+            if(uploadBtn)
+                textContent(uploadBtn,'上传完成');
+        });
+
+        uploader.on('startUpload',function(){
+            state = 'uploading';
+            console.log('uploading..');
+        });
+        
+        uploader.on('stopUpload',function(){
+            state = 'paused';
+            console.log('pause....');
+        });
+        
+        uploader.on('uploadFinished',function(){
+            state = 'done';
+            console.log('finished..');
         });
 
 //var eventHandler=
         (function(){
             var uploadBtn=document.getElementById(btnId);
-            addEvent(uploadBtn,'click',function(){
-                if ( state === 'uploading' ) {
-                    uploader.stop();
-                } else {
-                    uploader.upload();
-                }
-            });
+            if(uploadBtn){
+                addEvent(uploadBtn,'click',function(){
+                    if ( state === 'uploading' ) {
+                        uploader.stop();
+                    } else {
+                        uploader.upload();
+                    }
+                });
+            }
             /*
             addEvent(,'click',function(){
                     uploader.upload();
