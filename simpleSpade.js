@@ -14,7 +14,7 @@
 *
 * options= {
 *     serverPath:'../balight/photo/uploadcode',
-*     number: 2,   //创建的上传实例个数
+*     number: 2,   //创建的上传按钮的个数
 *     type: img,//img or file 上传图片 or  上传普通文件
 *     divId:id,  // 你要在页面哪个div下创建这个上传组件
 *     fileSizeLimit:,// int  所有文件的总上传大小不超过这个值
@@ -218,6 +218,16 @@
         var uploader=initUploader(options);
         var list=document.getElementById(listId);
         var state='pending';//
+
+        //添加文件选择按钮
+        if(options.number>1){
+            for(var k=0;k<options.number;k++){
+                uploader.addButton({
+                    id:'picker'+randomString(2)+i,
+                    innerHTML:'选择文件'+i
+                });
+            }
+        }
 
         // 当有文件添加进来的时候,一次处理一张图片，每张图片加进来都会触发一次这个事件
         uploader.on('fileQueued',function(file){
