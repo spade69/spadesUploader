@@ -6,6 +6,9 @@
 * 可以作为jQuery插件使用,导入jQuery即可，但不依赖jQuery
 * 提供暴露的class 供配置样式
 * 暂时提供两种组件样式供选择
+*
+* 兼容性：IE8+ 最新版本的Safari Chrome FireFox Opera等
+* 
 * 
 * Usage
 * 请在你的项目目录新建upload文件夹，并把webuploader所有文件
@@ -31,7 +34,13 @@
 *Author Jason
 *Date 2016/11/25
 *****/
+/*这时一个闭包包裹的IIFE Immediately-Invoked Function Expression
 
+ 分析一下jQuery原理
+使用了querySelector ，在IE8中兼容，有什么问题
+jQuery优先使用querySelector，对于IE6，7走sizzle逻辑
+
+***/
 (function(jQuery,WebUploader){
     //param  setting  Global variable
     var $=jQuery;
@@ -264,32 +273,39 @@
         });
 
     // 文件上传过程中创建进度条实时显示。
+    //如何取代find方法？ li.querySelector? 
         uploader.on('uploadProgress',function(file,percentage){
-             var $li = $( '#'+file.id ),
-             //var uploadBtn=document.getElementById(btnId);
-             $btn=$('#'+btnId);
-             $percent = $li.find('.progress .progress-bar');
+             //var $li = $( '#'+file.id ),
+             var li=document.querySelector('#'+file.id),
+                uploadBtn=document.getElementById(btnId),//$btn=$('#'+btnId);
+            //$percent = $li.find('.progress .progress-bar');
+                percent=li.querySelector('.progress .progress-bar');
              //上传按钮的提示信息
              var btnInfo=(options.type==='file')?btnTxt['file']:btnTxt['img'];
 
             // 避免重复创建
-            if ( !$percent.length ) {
+            if ( !percent.length ) {
                 $percent = $('<div class="progress progress-striped active">' +
                   '<div class="progress-bar" role="progressbar" style="width: 0%">' +
                   '</div>' +'</div>').appendTo( $li ).find('.progress-bar');
+                percent.innerHTML+=
             }
 
-            $li.find('p.state').text('上传中');
+           // $li.find('p.state').text('上传中');
+            textContent(li.querySelector('p.state'),'上传中');
             if(options.type==='file'){
                 if ( state === 'uploading' ) {
-                    $btn.text('暂停上传');
-                    $percent.css( 'width', percentage * 100 + '%' );
+                    //$btn.text('暂停上传');
+                    textContent(uploadBtn,'暂停上传');
+                    //$percent.css( 'width', percentage * 100 + '%' );
+                    percent.style.width=percentage*100+'%';
                 } else {
                     //depends on type
-                    $btn.text(btnInfo);
+                    textContent(uploadBtn,btnInfo); //$btn.text(btnInfo);
                 }
             }else{
-                 $percent.css( 'width', percentage * 100 + '%' );
+                 //$percent.css( 'width', percentage * 100 + '%' );
+                 percent.style.width=percentage*100+'%';
             }
         });
 
@@ -352,6 +368,7 @@
                 textContent(uploadBtn,'上传完成');
         });
 
+/**监听开始上传、停止上传、上传完成三个事件*/
         uploader.on('startUpload',function(){
             state = 'uploading';
             console.log('uploading..');

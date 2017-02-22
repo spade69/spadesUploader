@@ -1,6 +1,7 @@
  $(function() {
   	
   		/***
+Backup of old version
 *Author Jason
 *Date 2016/06/14
 *****/
