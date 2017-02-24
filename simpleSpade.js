@@ -201,7 +201,7 @@ jQuery优先使用querySelector，对于IE6，7走sizzle逻辑
                     server:options.serverPath,
                     // 选择文件的按钮。可选。
                     // 内部根据当前运行是创建，可能是input元素，也可能是flash.
-                    fileSizeLimit:options.fileSizeLimit, 
+                    fileSizeLimit:options.fileSizeLimit||102400, 
                     pick: '#'+picker, // picker id 
                     chunked:true,
                     chunkRetry:3,
@@ -284,11 +284,22 @@ jQuery优先使用querySelector，对于IE6，7走sizzle逻辑
              var btnInfo=(options.type==='file')?btnTxt['file']:btnTxt['img'];
 
             // 避免重复创建
+            // appendTo : Insert every element in the set of matched elements
+            //  to the end of the target.
+            //  (选择器)append(内容) 插入内容，被参数指定的内容
+            //  (内容)appendTo(选择器)
+            //  jQuery链式调用是return这个对象
             if ( !percent.length ) {
-                $percent = $('<div class="progress progress-striped active">' +
-                  '<div class="progress-bar" role="progressbar" style="width: 0%">' +
-                  '</div>' +'</div>').appendTo( $li ).find('.progress-bar');
-                percent.innerHTML+=
+                // $percent = $('<div class="progress progress-striped active">' +
+                //   '<div class="progress-bar" role="progressbar" style="width: 0%">' +
+                //   '</div>' +'</div>').appendTo( $li ).find('.progress-bar');
+                //   理解是链式调用返回的是最后一个this，因为第一个函数
+                //   中执行完后返回this，this执行下一个函数，下一个函数执行完之后
+                //   又返回 this
+                li.innerHTML+='<div class="progress progress-striped active">' +
+                   '<div class="progress-bar" role="progressbar" style="width: 0%">' +
+                   '</div>' +'</div>';
+                percent=li.querySelector('.progress-bar');
             }
 
            // $li.find('p.state').text('上传中');
